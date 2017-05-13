@@ -571,6 +571,35 @@ XHookHttpRequest.OPENED = 1;
 XHookHttpRequest.HEADERS_RECEIVED = 2;
 XHookHttpRequest.LOADING = 3;
 XHookHttpRequest.DONE = 4;
+#patch jsonp
+if typeof MutationObserver is "function"
+  getQueryParams = (url) ->
+    queryParams = url.split('?')
+    if (queryParams.length < 2)
+      return
+    return queryParams[1].split('&').map ( param )->
+      parts = param.split '='
+      return parts[1]
+  overrideScript = (node) ->
+    if node.nodeName != 'SCRIPT' || !node.src
+      return
+    queryParams = getQueryParams node.src
+    for qp in queryParams
+      if typeof window[qp] == 'function'
+        originalCb = window[qp]
+        window[qp] = (data) ->
+          console.log(data)
+          originalCb(data)
+
+  observerFn = (mutations) ->
+    for mutation in mutations
+      mutation.addedNodes.forEach overrideScript
+  observer = new MutationObserver observerFn
+  mutationConfig =
+    attributes: false
+    subtree: true
+    childList: true
+  observer.observe document, mutationConfig
 
 #publicise (amd+commonjs+window)
 if typeof define is "function" and define.amd

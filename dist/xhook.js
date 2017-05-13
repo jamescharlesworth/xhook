@@ -1,6 +1,7 @@
 // XHook - v1.4.3 - https://github.com/jpillora/xhook
 // Jaime Pillora <dev@jpillora.com> - MIT Copyright 2017
-var AFTER, BEFORE, COMMON_EVENTS, EventEmitter, FETCH, FIRE, FormData, NativeFetch, NativeFormData, NativeXMLHttp, OFF, ON, READY_STATE, UPLOAD_EVENTS, WINDOW, XHookFetchRequest, XHookFormData, XHookHttpRequest, XMLHTTP, convertHeaders, depricatedProp, document, fakeEvent, mergeObjects, msie, proxyEvents, slice, useragent, xhook, _base,
+(function(window,undefined) {
+var AFTER, BEFORE, COMMON_EVENTS, EventEmitter, FETCH, FIRE, FormData, NativeFetch, NativeFormData, NativeXMLHttp, OFF, ON, READY_STATE, UPLOAD_EVENTS, WINDOW, XHookFetchRequest, XHookFormData, XHookHttpRequest, XMLHTTP, convertHeaders, depricatedProp, document, fakeEvent, getQueryParams, mergeObjects, msie, mutationConfig, observer, observerFn, overrideScript, proxyEvents, slice, useragent, xhook, _base,
   __indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
 WINDOW = null;
@@ -660,6 +661,58 @@ XHookHttpRequest.LOADING = 3;
 
 XHookHttpRequest.DONE = 4;
 
+if (typeof MutationObserver === "function") {
+  getQueryParams = function(url) {
+    var queryParams;
+    queryParams = url.split('?');
+    if (queryParams.length < 2) {
+      return;
+    }
+    return queryParams[1].split('&').map(function(param) {
+      var parts;
+      parts = param.split('=');
+      return parts[1];
+    });
+  };
+  overrideScript = function(node) {
+    var originalCb, qp, queryParams, _i, _len, _results;
+    if (node.nodeName !== 'SCRIPT' || !node.src) {
+      return;
+    }
+    queryParams = getQueryParams(node.src);
+    _results = [];
+    for (_i = 0, _len = queryParams.length; _i < _len; _i++) {
+      qp = queryParams[_i];
+      if (typeof window[qp] === 'function') {
+        originalCb = window[qp];
+        _results.push(window[qp] = function(data) {
+          console.log(data);
+          return originalCb(data);
+        });
+      } else {
+        _results.push(void 0);
+      }
+    }
+    return _results;
+  };
+  observerFn = function(mutations) {
+    var mutation, _i, _len, _results;
+    _results = [];
+    for (_i = 0, _len = mutations.length; _i < _len; _i++) {
+      mutation = mutations[_i];
+      _results.push(mutation.addedNodes.forEach(overrideScript));
+    }
+    return _results;
+  };
+  observer = new MutationObserver(observerFn);
+  mutationConfig = {
+    attributes: false,
+    subtree: true,
+    childList: true
+  };
+  observer.observe(document, mutationConfig);
+}
+
 if (typeof define === "function" && define.amd) {
   define("xhook", [], function() {
     return xhook;
@@ -667,3 +720,5 @@ if (typeof define === "function" && define.amd) {
 } else {
   (this.exports || this).xhook = xhook;
 }
+
+}.call(this,window));

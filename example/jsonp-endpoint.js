@@ -1,0 +1,3 @@
+jsonpCallbackFn({
+  key: 'hello jsonp'
+})
